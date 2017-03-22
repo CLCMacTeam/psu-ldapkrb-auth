@@ -1,0 +1,71 @@
+#!/bin/bash
+
+# Treat unset variables as an error when performing parameter expansion. An error message will be written to the standard error, and a non-interactive shell will exit.
+set -u
+
+# Written by Rusty Myers
+# 2011-09-16
+
+# Postflight script to make the appropriate modifications for CLC auth
+# $3 variable is provided by the installer.app. It points to the volume the package is installing to.
+
+TIME=`date "+%Y-%m-%d-%H-%M-%S"`
+
+ifError () {
+# check return code passed to function
+exitStatus=$?
+if [[ $exitStatus -ne 0 ]]; then
+# if rc > 0 then print error msg and quit
+echo -e "$0 Time:$TIME $1 Exit: $exitStatus"
+exit $exitStatus
+fi
+}
+
+#Set variables
+PlistBuddy="$3/usr/libexec/PlistBuddy"
+SearchPlist="$3/Library/Preferences/OpenDirectory/Configurations/Search.plist"
+ContactPlist="$3/Library/Preferences/OpenDirectory/Configurations/Contacts.plist"
+ETCAuth="$3/etc/authorization"
+pamDauth="$3/etc/pam.d/authorization"
+pamDscrn="$3/etc/pam.d/screensaver"
+systemSetupLocation="$3/usr/sbin/systemsetup"
+timeZone="America/New_York"
+# networkTimeServer="time.apple.com"
+networkTimeServer="clock.psu.edu"
+
+#Set time zone, set time server, start NTP
+$systemSetupLocation -settimezone $timeZone
+$systemSetupLocation -setnetworktimeserver $networkTimeServer
+$systemSetupLocation -setusingnetworktime on
+
+# Setting LoginWindow delay to allow for DNS resolution before authenticating users.
+echo -e "Setting loginwindow StarupDelay to 60"
+/usr/bin/defaults write "${3}/Library/Preferences/com.apple.loginwindow" StartupDelay -int 60
+ifError "ERROR: Could not set loginwindow StarupDelay to 60"
+echo "dirappsauthscripts10.8: `/usr/bin/defaults read "${3}/Library/Preferences/com.apple.loginwindow" StartupDelay`"
+
+# Set login window to show username and password feilds
+echo -e "Setting loginwindow to show username/password fields"
+/usr/bin/defaults write "${3}/Library/Preferences/com.apple.loginwindow" SHOWFULLNAME -bool YES
+ifError "ERROR: Could not modify ${3}/Library/Preferences/com.apple.loginwindow"
+echo "dirappsauthscripts10.8: LoginWindow SHOWFULLNAME set to: `/usr/bin/defaults read "${3}/Library/Preferences/com.apple.loginwindow" SHOWFULLNAME`"
+
+# Set login window permissions
+echo -e "Setting loginwindow permissions to 644"
+/bin/chmod 644 "${3}/Library/Preferences/com.apple.loginwindow.plist"
+ifError "ERROR: Could not set permissions on ${3}/Library/Preferences/com.apple.loginwindow.plist"
+echo "dirappsauthscripts10.8: LoginWindow permissions set to: `ls -l "${3}/Library/Preferences/com.apple.loginwindow.plist"`"
+
+# Update pam.d authorization files.
+cp "${pamDauth}" "${pamDauth}.orig"
+ifError "ERROR: Could not back up pam.d authorization files"
+/usr/bin/perl -pi -e 's/auth       optional       pam_krb5.so use_first_pass use_kcminit/auth       sufficient       pam_krb5.so use_first_pass use_kcminit default_principal/g' "${pamDauth}"
+ifError "Error: Could not edit pam.d authorization file for kerberos logins."
+
+# Code to enable screensaver authentication for ldap users
+cp "${pamDscrn}" "${pamDscrn}.orig"
+ifError "ERROR: Could not back up pam.d screensaver files"
+/usr/bin/perl -pi -e 's/auth       optional       pam_krb5.so use_first_pass use_kcminit/auth       sufficient       pam_krb5.so use_kcminit use_first_pass default_principal/g' "${pamDscrn}"
+ifError "Error: Could not edit pam.d screensaver file for kerberos logins."
+
+exit 0

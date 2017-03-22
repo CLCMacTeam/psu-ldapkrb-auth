@@ -1,0 +1,82 @@
+#!/bin/bash
+
+# Treat unset variables as an error when performing parameter expansion. An error message will be written to the standard error, and a non-interactive shell will exit.
+set -u
+
+# Written by Rusty Myers
+# 2011-09-16
+
+# Preflight script to backup or move existing files that we will touch.
+# $3 variable is provided by the installer.app. It points to the volume the package is installing to.
+
+TIME=`date "+%Y-%m-%d-%H-%M-%S"`
+
+ifError () {
+# check return code passed to function
+exitStatus=$?
+if [[ $exitStatus -ne 0 ]]; then
+# if rc > 0 then print error msg and quit
+echo -e "$0 Time:$TIME $1 Exit: $exitStatus"
+exit $exitStatus
+fi
+}
+
+Plist="dirapps.aset.psu.edu.plist"
+thedate=`date "+%Y%m%d%S"`
+
+# Backup previous kerb file
+if [[ -e "${3}/Library/Preferences/edu.mit.Kerberos" ]]; then
+	echo -e "	Moving ${3}/Library/Preferences/edu.mit.Kerberos"
+	mv "${3}/Library/Preferences/edu.mit.Kerberos" "${3}/Library/Preferences/edu.mit.Kerberos.${thedate}"
+	ifError "ERROR: ${3}/Library/Preferences/edu.mit.Kerberos could not be backed up."
+else
+	echo "No file located at: ${3}/Library/Preferences/edu.mit.Kerberos"
+fi
+
+# Backup previous kerb file
+if [[ -e "${3}/etc/krb5.conf" ]]; then
+	echo -e "	Moving ${3}/etc/krb5.conf"
+	mv "${3}/etc/krb5.conf" "${3}/etc/krb5.conf.${thedate}"
+	ifError "ERROR: ${3}/etc/krb5.conf could not be backed up."
+else
+	echo "No file located at: ${3}/etc/krb5.conf"
+fi
+
+# Backup previous dirapps.aset.psu.edu.plist
+if [[ -e "${3}/Library/Preferences/OpenDirectory/Configurations/LDAPv3/${Plist}" ]]; then
+	echo -e "	Moving existing ${3}/Library/Preferences/OpenDirectory/Configurations/LDAPv3/${Plist}"
+	mv "${3}/Library/Preferences/OpenDirectory/Configurations/LDAPv3/${Plist}" "${3}/Library/Preferences/OpenDirectory/Configurations/LDAPv3/${Plist}.${thedate}"
+	ifError "ERROR: ${3}/Library/Preferences/OpenDirectory/Configurations/LDAPv3/${Plist} Could not be moved"
+else
+	echo "No file located at: ${3}/Library/Preferences/OpenDirectory/Configurations/LDAPv3/${Plist}"
+fi
+
+# Backup previous Search.plist
+if [[ -e "${3}/Library/Preferences/OpenDirectory/Configurations/Search.plist" ]]; then
+	echo -e "	Backing up ${3}/Library/Preferences/OpenDirectory/Configurations/Search.plist"
+	cp -p "${3}/Library/Preferences/OpenDirectory/Configurations/Search.plist" "${3}/Library/Preferences/OpenDirectory/Configurations/Search.plist.${thedate}"
+	ifError "ERROR: ${3}/Library/Preferences/OpenDirectory/Configurations/Search.plist Could not be backed up"
+else
+	echo "No file located at: ${3}/Library/Preferences/OpenDirectory/Configurations/Search.plist"
+fi
+
+# Backup previous Contacts.plist
+if [[ -e "${3}/Library/Preferences/OpenDirectory/Configurations/Contacts.plist" ]]; then
+	echo -e "	Backing up ${3}/Library/Preferences/OpenDirectory/Configurations/Contacts.plist"
+	cp -p "${3}/Library/Preferences/OpenDirectory/Configurations/Contacts.plist" "${3}/Library/Preferences/OpenDirectory/Configurations/Contacts.plist.${thedate}"
+	ifError "ERROR: ${3}/Library/Preferences/OpenDirectory/Configurations/Contacts.plist Could not be backed up"
+else
+	echo "No file located at: ${3}/Library/Preferences/OpenDirectory/Configurations/Search.plist"
+fi
+
+# Backup loginwindow.plist
+if [[ -e "${3}/Library/Preferences/com.apple.loginwindow.plist" ]]; then
+	echo -e "	Backing up ${3}/Library/Preferences/com.apple.loginwindow.plist"
+	cp -p "${3}/Library/Preferences/com.apple.loginwindow.plist" "${3}/Library/Preferences/com.apple.loginwindow.plist.${thedate}"
+	ifError "ERROR: Could not back up ${3}/Library/Preferences/com.apple.loginwindow.plist"
+else
+	echo "No file located at: ${3}/Library/Preferences/com.apple.loginwindow.plist"
+fi
+
+
+exit 0
